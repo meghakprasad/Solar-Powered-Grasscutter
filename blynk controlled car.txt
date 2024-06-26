@@ -1,0 +1,191 @@
+#define BLYNK_PRINT Serial
+#include <WiFi.h>
+#include <WiFiClient.h>
+#include <BlynkSimpleEsp32.h>
+
+#include <Wire.h>
+
+//Motor PINs
+#define ENA 14
+#define IN1 27
+#define IN2 26
+#define IN3 25
+#define IN4 33
+#define ENB 32
+#define ENC 15
+#define IN5 2
+#define IN6 4
+
+// Define analog input
+#define ANALOG_IN_PIN A0
+
+bool forward = 0;
+bool backward = 0;
+bool left = 0;
+bool right = 0;
+bool on=0;
+bool voltage = 0 ;
+int Speed=200;
+char auth[] = "Zg8UGv-6jLybuN09lDu1sXZ1-WY_3t-X"; //Enter your Blynk application auth token
+char ssid[] = "Dala"; //Enter your WIFI name
+char pass[] = "ga0t@123"; //Enter your WIFI passowrd
+
+// Floats for ADC voltage & Input voltage
+float adc_voltage = 0.0;
+float in_voltage = 0.0;
+ 
+// Floats for resistor values in divider (in ohms)
+float R1 = 30000.0;
+float R2 = 7500.0; 
+ 
+// Float for Reference Voltage
+float ref_voltage = 3.5;
+
+// Integer for ADC value
+int adc_value = 0;
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(ENA, OUTPUT);
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+  pinMode(IN3, OUTPUT);
+  pinMode(IN4, OUTPUT);
+  pinMode(ENB, OUTPUT);
+  pinMode(ENC, OUTPUT);
+  pinMode(IN5, OUTPUT);
+  pinMode(IN6, OUTPUT);
+  Blynk.begin(auth, ssid, pass, "blynk.cloud", 80);
+  // Setup Serial Monitor
+  
+}
+
+BLYNK_WRITE(V0) {
+  forward = param.asInt();
+}
+
+BLYNK_WRITE(V1) {
+  backward = param.asInt();
+}
+
+BLYNK_WRITE(V2) {
+  left = param.asInt();
+}
+
+BLYNK_WRITE(V3) {
+  right = param.asInt();
+}
+
+// BLYNK_WRITE(V4) {
+//   Speed = param.asInt();
+// }
+BLYNK_WRITE(V4) {
+  on = param.asInt();
+}
+
+void smartcar() {
+  if (forward == 1) {
+    carforward();
+    Serial.println("carforward");
+  } else if (backward == 1) {
+    carbackward();
+    Serial.println("carbackward");
+  } else if (left == 1) {
+    carturnleft();
+    Serial.println("carfleft");
+  } else if (right == 1) {
+    carturnright();
+    Serial.println("carright");
+  }  else if (forward == 0 && backward == 0 && left == 0 && right == 0) {
+    carStop();
+    Serial.println("carstop");
+  }
+  {
+    if (on == 1) {
+      carblade();
+      Serial.println("carblade");
+    }
+    else{
+        carbladeoff();
+        Serial.println("carbladestop");
+    }  
+  }
+}
+
+void loop() 
+{
+
+   // Read the Analog Input
+  adc_value = analogRead(ANALOG_IN_PIN);
+  
+  // Determine voltage at ADC input
+  adc_voltage  = (adc_value * ref_voltage) / 4095.0;
+  
+  // Calculate voltage at divider input
+  in_voltage = adc_voltage*(R1+R2)/R2;
+
+  int Per = (in_voltage/12) * 100;
+  
+  // Print results to Serial Monitor to 2 decimal places
+  Serial.print("Input Voltage = ");
+  Serial.println(in_voltage, 2);
+  Serial.print("Battery Percentage:");
+  Serial.print(Per);
+  Serial.println("%");
+ 
+  // Short delay
+  delay(500);
+Blynk.virtualWrite(V5, Per);
+  Blynk.run();
+  smartcar();
+}
+
+
+void carforward() {
+  analogWrite(ENA, Speed);
+  analogWrite(ENB, Speed);
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, HIGH);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, HIGH);
+}
+void carbackward() {
+  analogWrite(ENA, Speed);
+  analogWrite(ENB, Speed);
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, LOW);
+}
+void carturnleft() {
+  analogWrite(ENA, Speed);
+  analogWrite(ENB, Speed);
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, HIGH);
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, LOW);
+}
+void carturnright() {
+  analogWrite(ENA, Speed);
+  analogWrite(ENB, Speed);
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, HIGH);
+}
+void carblade() {
+  digitalWrite(ENC, HIGH);
+  digitalWrite(IN5, LOW);
+  digitalWrite(IN6, HIGH);
+}
+void carStop() {
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, LOW);
+}
+
+void carbladeoff() {
+  digitalWrite(IN5, LOW);
+  digitalWrite(IN6, LOW);
+}
